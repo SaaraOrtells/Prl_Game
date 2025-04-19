@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>👩🏻‍🏫 Juego de PRL</title>
+  <link rel="icon" href="favicon.png" type="image/png">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <style>
+    body {
+      font-family: 'Poppins', sans-serif;
+      background: linear-gradient(to bottom right, #5ba8ff,#5ba8ff, #a4d4ff);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      margin: 0;
+      padding: 20px;
+      color: #333;
+    }
+
+    h1, h3 {
+      margin: 10px;
+      text-align: center;
+    }
+
+    h1 {
+      font-size: 2em;
+      color: #003e7e;
+    }
+
+    .question-box {
+      background-color: #fff;
+      border-radius: 20px;
+      box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+      padding: 40px 30px;
+      text-align: center;
+      max-width: 450px;
+      width: 100%;
+      transition: all 0.3s ease-in-out;
+    }
+
+    .question-box:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 15px 30px rgba(0,0,0,0.15);
+    }
+
+    .button {
+      margin: 10px 15px;
+      padding: 12px 28px;
+      background-color: #007bff;
+      color: white;
+      border: none;
+      border-radius: 50px;
+      cursor: pointer;
+      font-size: 16px;
+      font-weight: bold;
+      transition: background-color 0.3s ease;
+    }
+
+    .button:hover {
+      background-color: #0056b3;
+    }
+
+    .score-box {
+      margin-top: 20px;
+      font-size: 18px;
+      font-weight: 500;
+    }
+
+    .progress-bar {
+      margin-top: 25px;
+      height: 12px;
+      width: 100%;
+      max-width: 450px;
+      background-color: #e0e0e0;
+      border-radius: 20px;
+      overflow: hidden;
+    }
+
+    .progress {
+      height: 100%;
+      background-color: #007bff;
+      width: 0%;
+      transition: width 0.4s ease-in-out;
+    }
+
+    footer {
+      margin-top: 60px;
+      font-size: 0.9em;
+      color: #242424;
+      text-align: center;
+    }
+
+    .disabled {
+      background-color: #cccccc !important;
+      cursor: not-allowed;
+    }
+  </style>
+</head>
+<body>
+  <h1>👷 Juego de PRL 🦺</h1>
+  <h3>Preguntas de Sí o No</h3>
+  <p style="margin-bottom: 30px;">Hecho por Sara Cano (1ºDAM)</p>
+
+  <div class="question-box" id="questionBox">Cargando pregunta...</div>
+
+  <div>
+    <button class="button" onclick="answer(true)" id="btnYes">Sí ✅</button>
+    <button class="button" onclick="answer(false)" id="btnNo">No 🙅🏻</button>
+  </div>
+
+  <div class="score-box" id="scoreBox"></div>
+
+  <div class="progress-bar">
+    <div class="progress" id="progressBar"></div>
+  </div>
+
+  <button class="button" onclick="descargarPDF()" id="pdfBtn" style="display:none; margin-top: 20px;">📄 Descargar errores</button>
+
+  <footer>
+    <p>&copy; 19/04/2025. Sara Cano (1ºDAM).</p>
+  </footer>
+
+  <script>
+    const questions = [
+      { text: "¿Es obligatorio que la empresa garantice la seguridad y salud de sus trabajadores?", answer: true },
+      { text: "¿Los EPI son opcionales si el trabajador no quiere usarlos?", answer: false },
+      { text: "¿Un accidente laboral puede ocurrir durante el trayecto al trabajo?", answer: true },
+      { text: "¿El estrés laboral se considera un riesgo físico?", answer: false },
+      { text: "¿La Ley de Prevención de Riesgos Laborales es del año 1995?", answer: true },
+      { text: "¿Un trabajador puede dejar de trabajar si hay un riesgo grave e inminente?", answer: true },
+      { text: "¿Un comité de seguridad y salud solo se forma en empresas con más de 100 trabajadores?", answer: false },
+      { text: "¿Una enfermedad profesional puede considerarse un accidente laboral?", answer: false },
+      { text: "¿El empresario tiene la obligación de formar a los trabajadores en PRL?", answer: true },
+      { text: "¿Un producto químico sin etiqueta de seguridad no presenta riesgo?", answer: false }
+    ];
+
+    let current = 0;
+    let score = 0;
+    let fallos = [];
+
+    function loadQuestion() {
+      if (current < questions.length) {
+        document.getElementById("questionBox").textContent = questions[current].text;
+        document.getElementById("scoreBox").textContent = `Pregunta ${current + 1} de ${questions.length}`;
+        document.getElementById("progressBar").style.width = `${(current / questions.length) * 100}%`;
+      } else {
+        document.getElementById("questionBox").textContent = "¡Has terminado el juego!";
+        document.getElementById("scoreBox").textContent = `Puntuación final: ${score} de ${questions.length}`;
+        document.getElementById("progressBar").style.width = `100%`;
+        document.getElementById("btnYes").classList.add("disabled");
+        document.getElementById("btnNo").classList.add("disabled");
+        document.getElementById("btnYes").disabled = true;
+        document.getElementById("btnNo").disabled = true;
+        if (fallos.length > 0) {
+          document.getElementById("pdfBtn").style.display = "inline-block";
+        }
+      }
+    }
+
+    function answer(userAnswer) {
+      if (questions[current].answer !== userAnswer) {
+        fallos.push({
+          pregunta: questions[current].text,
+          correcta: questions[current].answer ? "Sí" : "No"
+        });
+      } else {
+        score++;
+      }
+      current++;
+      loadQuestion();
+    }
+
+    function descargarPDF() {
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF();
+      doc.setFontSize(14);
+      doc.text("Preguntas falladas - Juego de PRL", 10, 10);
+
+      let y = 20;
+      fallos.forEach((fallo, i) => {
+        doc.text(`${i + 1}. ${fallo.pregunta}`, 10, y);
+        y += 7;
+        doc.text(`   ✅ Respuesta correcta: ${fallo.correcta}`, 10, y);
+        y += 10;
+        if (y > 270) {
+          doc.addPage();
+          y = 20;
+        }
+      });
+
+      doc.save("errores-prl.pdf");
+    }
+
+    window.onload = loadQuestion;
+  </script>
+</body>
+</html>
